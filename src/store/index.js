@@ -15,7 +15,7 @@ export default new Vuex.Store({
   state: {
     playback: PlaybackStates.STOP,
     track: new Howl({
-      'src': ['/src/assets/holdsworth.mp3'],
+      'src': ['holdsworth.mp3'],
       'html5': true,
       'autoplay': false,
     }), 
