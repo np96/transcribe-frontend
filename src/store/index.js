@@ -10,6 +10,39 @@ const PlaybackStates = Object.freeze({
   STOP: Symbol("stop")
 })
 
+function arrayReducer(arr, reducer) {
+  return arr.reduce(reducer)
+}
+
+function segmentAvg(points) {
+  return arrayReducer(points, (acc, v) => acc + Math.abs(v)) / points.length * 2
+}
+
+function segmentPeak(points) {
+  return [Math.max(...points), Math.min(...points)]
+}
+
+function segmentRms(points) {
+  const squareSum = arrayReducer(points, (acc, v) => acc + Math.pow(v, 2))
+  return Math.sqrt(squareSum / points.length)
+}
+
+
+function waveformData(data, segSize) {
+  let avg = [], mean = [], peak = []
+  const segments = Math.ceil(data.length / segSize)
+  for (let start = 0; start < segments * segSize; start += segSize) {
+      avg.push(segmentAvg(data.slice(start, start + segSize)))
+      mean.push(segmentRms(data.slice(start, start + segSize)))
+      peak.push(segmentPeak(data.slice(start, start + segSize)))
+  }
+  return {
+    'avg': avg,
+    'mean': mean,
+    'peaks': peak
+  }
+}
+
 
 export default new Vuex.Store({
   state: {
@@ -19,6 +52,7 @@ export default new Vuex.Store({
       'html5': true,
       'autoplay': false,
     }), 
+    peaks: [],
     time: 0,
   },
   mutations: {
@@ -60,6 +94,9 @@ export default new Vuex.Store({
           break;
       }
     },
+    peaks (state, data) {
+      state.peaks = data
+    }
   },
   actions: {
     play  (context) {
@@ -77,7 +114,24 @@ export default new Vuex.Store({
       this.state.track.stop()
       context.commit('stop')
     },
+
+    async getWaveform (context) {
+      try {
+        const audioBuffer = await fetch('holdsworth.mp3')
+                          .then(response => response.blob())
+                          .then(blob => blob.arrayBuffer())
+                          .then(buffer => Howler.ctx.decodeAudioData(buffer))
+        const channels = [audioBuffer.getChannelData(0), audioBuffer.getChannelData(1)]
+        const data = waveformData(channels[0], Math.ceil(channels[0].length / 500))
+        console.log('asdf')
+        context.commit('peaks', data['peaks'])
+      } catch (error) {
+        console.error('failed to retreive audio data')
+        console.log(error)
+      }
+    },
   },
+
   modules: {
   }
 })
