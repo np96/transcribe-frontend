@@ -1,5 +1,7 @@
 # transcribe-frontend
 
+The project is WIP.
+
 ## Project setup
 ```
 yarn install
