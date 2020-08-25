@@ -34,8 +34,7 @@ export default {
     canv.setAttribute('width', this.width)
     canv.setAttribute('height', this.height)
     this.ctx = canv.getContext("2d")
-    // this.ctx.rect(20, 20, 150, 100)
-    // this.ctx.stroke()
+    
     this.$store.dispatch('getWaveform').then(this.drawPeaks())
   },
 
@@ -47,13 +46,12 @@ export default {
       this.ctx.beginPath()
       let x = 0
       this.peaksCanvas.forEach(p => {
-        console.log(p[0] + ' ' + p[1])
         this.ctx.moveTo(x, p[0])
         this.ctx.lineTo(x, p[1])
         x++
       })
       this.ctx.stroke()
-      // requestAnimationFrame(this.drawPeaks.bind(this))
+      requestAnimationFrame(this.drawPeaks.bind(this))
     },
   }
 }
