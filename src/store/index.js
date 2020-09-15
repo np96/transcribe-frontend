@@ -11,11 +11,13 @@ const PlaybackStates = Object.freeze({
 })
 
 
-
-
-
-function segmentPeak(points) {
-  return [Math.max(...points), Math.min(...points)]
+function listPeak(points) {
+  let min = 0, max = 0
+  for (let point of points) {
+    max = Math.max(point, max)
+    min = Math.min(point, min)
+  }
+  return [max, min]
 }
 
 /*
@@ -33,11 +35,62 @@ function segmentRms(points) {
 }
 */
 
-function waveformData(data, segSize) {
-  let /*avg = [], mean = [], */ peak = []
+
+
+class SegmentTree {
+  constructor(chanData) {
+    this.data = chanData
+    this.tree = new Array(chanData.length * 4)
+    this.buildSegmentTree(1, 0, chanData.length - 1)
+  }
+
+  buildSegmentTree(v, l, r) {
+    let data = this.data
+    let tree = this.tree
+    if (l == r) {
+      tree[v] = [data[l], data[l]]
+    }
+    else {
+      this.buildSegmentTree(2 * v, l , (l + r) >> 2)
+      this.buildSegmentTree(2 * v + 1, (l + r) >> 2 + 1, r)
+      tree[v] = listPeak(tree[2 * v].concat(tree[2 * v + 1]))
+    }
+  }
+
+  segmentPeak(l, r, v = 1, tl = 0, tr = this.data.length - 1) {
+    if (l > r) {
+      return []
+    }
+    if (l == tl && r == tr) {
+      return this.tree[v]
+    } else {
+      const tm = (tl + tr) >> 2
+      const lpeak = this.segmentPeak(l, Math.min(r, tm),
+                                     2 * v, tl, tm)
+      const rpeak = this.segmentPeak(Math.max(l, tm + 1), r,
+                                     2 * v + 1, tm + 1, tr)
+      listPeak(lpeak.concat(rpeak))
+    }
+  }
+
+  // for given zoom (log2 scale) and number of segments calculate
+  // segment size to look up in this tree
+  segmentSize(zoomRatio, numSegments) {
+    const zoom = 1 + Math.log2(1 + zoomRatio)
+    const len = this.data.length
+    return Math.ceil(len/numSegments/zoom)
+  }
+}
+
+
+
+
+
+/*function segment_tree(data, segSize, from = 0) {
+  let /*avg = [], mean = [],  peak = []
   const segments = Math.ceil(data.length / segSize)
-  for (let start = 0; start < segments * segSize; start += segSize) {
-      //avg.push(segmentAvg(data.slice(start, start + segSize)))
+  for (let start = from; start < segments * segSize; start += segSize) {
+      // avg.push(segmentAvg(data.slice(start, start + segSize)))
       // mean.push(segmentRms(data.slice(start, start + segSize)))
       peak.push(segmentPeak(data.slice(start, start + segSize)))
   }
@@ -46,7 +99,7 @@ function waveformData(data, segSize) {
     //'mean': mean,
     'peaks': peak
   }
-}
+}*/
 
 
 export default new Vuex.Store({
@@ -56,7 +109,8 @@ export default new Vuex.Store({
       'src': ['example.mp3'],
       'html5': true,
       'autoplay': false,
-    }), 
+    }),
+    buffer: null,
     peaks: [],
     time: 0,
   },
@@ -122,13 +176,18 @@ export default new Vuex.Store({
 
     async getWaveform (context) {
       try {
-        const audioBuffer = await fetch('example.mp3')
+        let audioBuffer
+        if (this.state.audioBuffer == null) {
+        audioBuffer = await fetch('example.mp3')
                           .then(response => response.blob())
                           .then(blob => blob.arrayBuffer())
                           .then(buffer => Howler.ctx.decodeAudioData(buffer))
+        context.commit('buffer', audioBuffer)
+        } else audioBuffer = this.state.audioBuffer
+        // let dur = audioBuffer.duration
         const channels = [audioBuffer.getChannelData(0), audioBuffer.getChannelData(1)]
-        const data = waveformData(channels[0], Math.ceil(channels[0].length / 500))
-        context.commit('peaks', data['peaks'])
+        const segments = SegmentTree(channels[0])
+        context.commit('peaks', segments)
       } catch (error) {
         console.error('failed to retreive audio data')
         console.log(error)
