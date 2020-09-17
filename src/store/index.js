@@ -20,15 +20,16 @@ function listPeak(points) {
   return [max, min]
 }
 
-/*
+
 function arrayReducer(arr, reducer) {
   return arr.reduce(reducer)
 }
 
 function segmentAvg(points) {
-  return arrayReducer(points, (acc, v) => acc + Math.abs(v)) / points.length * 2
+  //return arrayReducer(points, (acc, v) => acc + Math.abs(v)) / points.length * 2
+  return arrayReducer(points, (acc, v) => acc + v) / points.length
 }
-
+/*
 function segmentRms(points) {
   const squareSum = arrayReducer(points, (acc, v) => acc + Math.pow(v, 2))
   return Math.sqrt(squareSum / points.length)
@@ -40,8 +41,9 @@ function segmentRms(points) {
 class SegmentTree {
   constructor(chanData) {
     this.data = chanData
-    this.tree = new Array(chanData.length * 4)
-    this.buildSegmentTree(1, 0, chanData.length - 1)
+    this.tree = new Array(chanData.length * 2 - 1)
+    //this.buildSegmentTree(1, 0, chanData.length - 1)
+    this.buildTree()
   }
 
   buildSegmentTree(v, l, r) {
@@ -51,8 +53,8 @@ class SegmentTree {
       tree[v] = [data[l], data[l]]
     }
     else {
-      this.buildSegmentTree(2 * v, l , (l + r) >> 2)
-      this.buildSegmentTree(2 * v + 1, (l + r) >> 2 + 1, r)
+      this.buildSegmentTree(2 * v, l , (l + r) >> 1)
+      this.buildSegmentTree(2 * v + 1, ((l + r) >> 1) + 1, r)
       tree[v] = listPeak(tree[2 * v].concat(tree[2 * v + 1]))
     }
   }
@@ -64,13 +66,46 @@ class SegmentTree {
     if (l == tl && r == tr) {
       return this.tree[v]
     } else {
-      const tm = (tl + tr) >> 2
+      const tm = (tl + tr) >> 1
       const lpeak = this.segmentPeak(l, Math.min(r, tm),
                                      2 * v, tl, tm)
       const rpeak = this.segmentPeak(Math.max(l, tm + 1), r,
                                      2 * v + 1, tm + 1, tr)
-      listPeak(lpeak.concat(rpeak))
+      return listPeak(lpeak.concat(rpeak))
     }
+  }
+
+  buildTree() {
+    let data = this.data
+    let tree = this.tree
+    const n = data.length
+    for (let i = 0; i < n; i++) {
+      tree[n - 1 + i] = [data[i], data[i]]
+    }
+    for (let i = n - 2; i >= 0; i--) {
+      tree[i] = listPeak(tree[2 * i + 1].concat(tree[2 * i + 2]))
+    }
+  }
+
+  segmentPeakBottom(l, r) {
+    l += this.data.length - 1
+    r += this.data.length - 1
+    let left = [], right = []
+    while (l < r) {
+      if (l % 2 == 0) {
+        left = listPeak(left.concat(this.tree[l]))
+      }
+      l >>= 1
+      if (r % 2) {
+        right = listPeak(this.tree[r].concat(right))
+      }
+      r >>= 1; r -= 1
+    }
+    if (l == r) {
+        left = listPeak(this.tree[l].concat(left))
+    }
+    return listPeak(left.concat(right))
+  
   }
 
   // for given zoom (log2 scale) and number of segments calculate
@@ -78,7 +113,7 @@ class SegmentTree {
   segmentSize(zoomRatio, numSegments) {
     const zoom = 1 + Math.log2(1 + zoomRatio)
     const len = this.data.length
-    return Math.ceil(len/numSegments/zoom)
+    return Math.floor(len/numSegments/zoom)
   }
 }
 
@@ -86,20 +121,20 @@ class SegmentTree {
 
 
 
-/*function segment_tree(data, segSize, from = 0) {
-  let /*avg = [], mean = [],  peak = []
+function segmentList(data, segSize, from = 0) {
+  let avg = [] //, mean = [],  let peak = []
   const segments = Math.ceil(data.length / segSize)
   for (let start = from; start < segments * segSize; start += segSize) {
-      // avg.push(segmentAvg(data.slice(start, start + segSize)))
+      avg.push(segmentAvg(data.slice(start, start + segSize)))
       // mean.push(segmentRms(data.slice(start, start + segSize)))
-      peak.push(segmentPeak(data.slice(start, start + segSize)))
+      // peak.push(listPeak(data.slice(start, start + segSize)))
   }
   return {
-    //'avg': avg,
+    'avg': avg,
     //'mean': mean,
-    'peaks': peak
+    // 'peaks': peak
   }
-}*/
+}
 
 
 export default new Vuex.Store({
@@ -111,6 +146,7 @@ export default new Vuex.Store({
       'autoplay': false,
     }),
     buffer: null,
+    segments: null,
     peaks: [],
     time: 0,
   },
@@ -155,6 +191,9 @@ export default new Vuex.Store({
     },
     peaks (state, data) {
       state.peaks = data
+    },
+    segments (state, segments) {
+      state.segments = segments
     }
   },
   actions: {
@@ -186,8 +225,10 @@ export default new Vuex.Store({
         } else audioBuffer = this.state.audioBuffer
         // let dur = audioBuffer.duration
         const channels = [audioBuffer.getChannelData(0), audioBuffer.getChannelData(1)]
-        const segments = SegmentTree(channels[0])
-        context.commit('peaks', segments)
+        const segmentTree = new SegmentTree(
+                              segmentList(channels[0], 100)['avg']
+                            )
+        context.commit('segments', segmentTree)
       } catch (error) {
         console.error('failed to retreive audio data')
         console.log(error)
