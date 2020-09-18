@@ -1,6 +1,7 @@
 <template>
   <div style="width:100%;">
-      <canvas id = "c" ref="can"></canvas>
+      <canvas @mousedown="startSelect" @mouseup="endSelect" @mousemove="selectMove"
+        id = "c" ref="can"/>
     <v-btn icon large fab color="indigo" @click="onZoomIn">
       <v-icon>mdi-magnify-plus</v-icon>
     </v-btn>
@@ -37,6 +38,9 @@ export default {
       ctx: null,
       ready: false,
       canv: null,
+      loopStart: null,
+      loopEnd: null,
+      dragging: false,
       peaksCanv: new Array(this.divWidth)
     }
   },
@@ -75,6 +79,34 @@ export default {
       this.updatePeaks()
     },
 
+    startSelect() {
+      console.log('start')
+      this.loopStart = null
+      this.loopEnd = null
+      this.dragging = true
+    },
+
+    endSelect() {
+      if (this.loopEnd == null) { return }
+      this.dragging = false
+      const start = this.getTime(this.loopStart, this.$store.getters.duration)
+      const end = this.getTime(this.loopEnd, this.$store.getters.duration)
+      this.$store.dispatch('startLoop', [start, end])
+    },
+
+    selectMove(e) {
+      console.log(e.clientX)
+      if (!this.dragging)
+        return;
+      if (this.loopStart == null) {
+        this.loopStart = e.clientX
+      }
+      else {
+        this.loopStart = Math.min(e.clientX, this.loopStart)
+        this.loopEnd = Math.max(e.clientX, this.loopStart)
+      }
+    },
+
     updatePeaks () {
       const offset = this.offsetLeft
       const tree = this.$store.state.segments
@@ -86,15 +118,19 @@ export default {
       }
     },
 
+    getTime(x, duration) {
+      // t = (x + ol) * dur / w / (z + 1)
+      return (x + this.offsetLeft) * duration / this.width / (this.zoom + 1)
+    },
 
     getX(time, duration) {
-      return Math.floor(this.width * (time - this.offsetLeft) * (this.zoom + 1) / duration)
+      // x = w * t * (z + 1) / dur - ol
+      return Math.floor(this.width * time * (this.zoom + 1) / duration - this.offsetLeft)
     },
 
     drawSlider() {
-      const time = this.$store.state.track.seek()
-      const dur = this.$store.state.track.duration()
-      const x = this.getX(time, dur)
+      const time = this.$store.getters.seek
+      const x = this.getX(time, this.$store.getters.duration)
       if (x >= 0) {
         this.ctx.beginPath()
         this.ctx.lineWidth = 1

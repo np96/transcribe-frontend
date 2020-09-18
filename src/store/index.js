@@ -147,9 +147,16 @@ export default new Vuex.Store({
     }),
     buffer: null,
     segments: null,
+    loop: [false, 0, 0],
     peaks: [],
     time: 0,
   },
+
+  getters: {
+    duration: state => { return state.track.duration() },
+    seek: state => { return state.track.seek() }
+  },
+
   mutations: {
     play (state) {
       switch (state.playback) {
@@ -194,20 +201,37 @@ export default new Vuex.Store({
     },
     segments (state, segments) {
       state.segments = segments
-    }
+    },
+    buffer (state, buf) {
+      state.buffer = buf
+    },
+    loop (state, pos) {
+      state.loop = [true, pos[0], pos[1]]
+    },
   },
   actions: {
-    play  (context) {
+
+    startLoop (context, pos) {
+      console.log(pos[0] + ' ' + pos[1])
+      context.state.track.pause()
+      context.state.track._sprite.l =  [ pos[0]*1000, (pos[1]-pos[0])*1000, true]
+      context.state.track.play('l')
+      context.commit('loop', pos)
+    },
+
+    play (context) {
       console.log(Howler.codecs("mp3"));
       context.state.track.play();
       // console.log(this.state.track.seek())
       context.commit('play')
     },
+
     pause (context) {
       this.state.track.pause()
       context.commit('pause')
     },
-    stop  (context) {
+
+    stop (context) {
       this.state.track.stop()
       context.commit('stop')
     },
@@ -222,7 +246,6 @@ export default new Vuex.Store({
                           .then(buffer => Howler.ctx.decodeAudioData(buffer))
         context.commit('buffer', audioBuffer)
         } else audioBuffer = this.state.audioBuffer
-        // let dur = audioBuffer.duration
         const channels = [audioBuffer.getChannelData(0), audioBuffer.getChannelData(1)]
         const segmentTree = new SegmentTree(
                               segmentList(channels[0], 100)['avg']
