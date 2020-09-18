@@ -80,7 +80,6 @@ export default {
     },
 
     startSelect() {
-      console.log('start')
       this.loopStart = null
       this.loopEnd = null
       this.dragging = true
