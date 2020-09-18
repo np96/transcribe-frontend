@@ -201,7 +201,6 @@ export default new Vuex.Store({
       console.log(Howler.codecs("mp3"));
       context.state.track.play();
       // console.log(this.state.track.seek())
-      console.log("lmao");
       context.commit('play')
     },
     pause (context) {

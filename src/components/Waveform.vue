@@ -1,5 +1,5 @@
 <template>
-    <div style="width:100%;">
+  <div style="width:100%;">
       <canvas id = "c" ref="can"></canvas>
     <v-btn icon large fab color="indigo" @click="onZoomIn">
       <v-icon>mdi-magnify-plus</v-icon>
@@ -10,7 +10,7 @@
     <div style="width:100%; overflow:scroll" id="scrolltar">
       <canvas id="scroller" style="resize:both"></canvas>
     </div>
-    </div>
+  </div>
 </template>
 
 <script>
@@ -33,7 +33,7 @@ export default {
   data () {
     return {
       offsetLeft: 0,
-      zoom: 1,
+      zoom: 0,
       ctx: null,
       ready: false,
       canv: null,
@@ -86,10 +86,29 @@ export default {
       }
     },
 
+
+    getX(time, duration) {
+      return Math.floor(this.width * (time - this.offsetLeft) * (this.zoom + 1) / duration)
+    },
+
+    drawSlider() {
+      const time = this.$store.state.track.seek()
+      const dur = this.$store.state.track.duration()
+      const x = this.getX(time, dur)
+      if (x >= 0) {
+        this.ctx.beginPath()
+        this.ctx.lineWidth = 1
+        this.ctx.strokeStyle='black'
+        this.ctx.moveTo(x, 0)
+        this.ctx.lineTo(x, this.height)
+        this.ctx.stroke()
+      }
+    },
+
     drawPeaks () {
       const scroller = document.getElementById("scroller")
       scroller.setAttribute('width', this.width * (this.zoom + 1))
-      scroller.setAttribute('height', 20)
+      scroller.setAttribute('height', 100)
       this.ctx.clearRect(0, 0, this.width, this.height)
       this.ctx.lineWidth = 0.5
       this.ctx.strokeStyle = 'green'
@@ -101,6 +120,7 @@ export default {
         x++
       })
       this.ctx.stroke()
+      this.drawSlider()
       requestAnimationFrame(this.drawPeaks.bind(this))
     },
   }
