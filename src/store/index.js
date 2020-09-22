@@ -146,7 +146,6 @@ export default new Vuex.Store({
     segments: null,
     loop: [false, 0, 0],
     peaks: [],
-    time: 0,
   },
 
   computed: {
@@ -183,11 +182,9 @@ export default new Vuex.Store({
       switch (state.playback) {
         case PlaybackStates.PLAY:
           state.playback = PlaybackStates.STOP
-          state.time = 0
           break;
         case PlaybackStates.PAUSE:
           state.playback = PlaybackStates.STOP
-          state.time = 0
           break;
         case PlaybackStates.STOP:
           break;
@@ -211,10 +208,11 @@ export default new Vuex.Store({
 
     startLoop (context, pos) {
       console.log(pos[0] + ' ' + pos[1])
-      context.state.track.pause()
+      context.state.track.stop()
+      context.dispatch('stop')
       context.state.track._sprite.l =  [ pos[0]*1000, (pos[1]-pos[0])*1000, true]
-      context.state.track.play('l')
       context.commit('loop', [true, pos[0], pos[1]])
+      context.dispatch('play')
     },
     
     endLoop (context) {
@@ -222,8 +220,12 @@ export default new Vuex.Store({
     },
 
     play (context) {
-      console.log(Howler.codecs("mp3"));
-      context.state.track.play();
+      console.log(Howler.codecs("mp3"))
+      if (context.state.loop[0]) {
+        context.state.track.play('l')
+      } else {
+        context.state.track.play()
+      }
       // console.log(this.state.track.seek())
       context.commit('play')
     },

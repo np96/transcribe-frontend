@@ -62,6 +62,16 @@ export default {
     this.draw()
   },
 
+  computed: {
+    seek: {
+      cache: false,
+      get: function () {
+        // const loop = this.$store.state.loop
+        return this.$store.state.track.seek() // + (loop[0] ? loop[1] : 0)
+    }
+    }
+  },
+
   methods: {
 
     onScroll(e) {
@@ -118,20 +128,19 @@ export default {
       }
     },
 
-    getTime(x, duration) {
+    getTime(x, duration = this.$store.state.track.duration()) {
       // t = (x + ol) * dur / w / (z + 1)
       return (x + this.offsetLeft) * duration / this.width / (this.zoom + 1)
     },
 
-    getX(time, duration) {
+    getX(time, duration = this.$store.state.track.duration()) {
       // x = w * t * (z + 1) / dur - ol
       return Math.floor(this.width * time * (this.zoom + 1) / duration - this.offsetLeft)
     },
 
     drawSlider() {
-      const loop = this.$store.state.loop
-      const time = this.$store.state.track.seek() + loop[0] ? loop[1] : 0
-      const x = this.getX(time, this.$store.state.track.duration())
+      const time = this.$store.state.track.seek()
+      const x = this.getX(time)
       if (x >= 0) {
         this.ctx.beginPath()
         this.ctx.lineWidth = 1
