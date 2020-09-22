@@ -59,7 +59,7 @@ export default {
     
     this.canv = canv
     this.ctx = canv.getContext("2d")
-    this.drawPeaks()
+    this.draw()
   },
 
   methods: {
@@ -80,6 +80,7 @@ export default {
     },
 
     startSelect() {
+      this.$store.dispatch('endLoop')
       this.loopStart = null
       this.loopEnd = null
       this.dragging = true
@@ -88,13 +89,13 @@ export default {
     endSelect() {
       if (this.loopEnd == null) { return }
       this.dragging = false
-      const start = this.getTime(this.loopStart, this.$store.getters.duration)
-      const end = this.getTime(this.loopEnd, this.$store.getters.duration)
+      const duration = this.$store.state.track.duration()
+      const start = this.getTime(this.loopStart, duration)
+      const end = this.getTime(this.loopEnd, duration)
       this.$store.dispatch('startLoop', [start, end])
     },
 
     selectMove(e) {
-      console.log(e.clientX)
       if (!this.dragging)
         return;
       if (this.loopStart == null) {
@@ -128,8 +129,9 @@ export default {
     },
 
     drawSlider() {
-      const time = this.$store.getters.seek
-      const x = this.getX(time, this.$store.getters.duration)
+      const loop = this.$store.state.loop
+      const time = this.$store.state.track.seek() + loop[0] ? loop[1] : 0
+      const x = this.getX(time, this.$store.state.track.duration())
       if (x >= 0) {
         this.ctx.beginPath()
         this.ctx.lineWidth = 1
@@ -140,10 +142,19 @@ export default {
       }
     },
 
-    drawPeaks () {
-      const scroller = document.getElementById("scroller")
-      scroller.setAttribute('width', this.width * (this.zoom + 1))
-      scroller.setAttribute('height', 100)
+    drawSelection() {
+      if (this.loopEnd != null) {
+        this.ctx.beginPath()
+        this.ctx.lineWidth = 1
+        this.ctx.strokeStyle = 'blue'
+        if (this.loopEnd > this.loopStart) {
+          this.ctx.rect(this.loopStart, 0, this.loopEnd - this.loopStart, this.height)
+          this.ctx.stroke()
+        }
+      }
+    },
+
+    drawWaveform() {
       this.ctx.clearRect(0, 0, this.width, this.height)
       this.ctx.lineWidth = 0.5
       this.ctx.strokeStyle = 'green'
@@ -155,8 +166,17 @@ export default {
         x++
       })
       this.ctx.stroke()
+    },
+
+    draw() {
+      const scroller = document.getElementById("scroller")
+      scroller.setAttribute('width', this.width * (this.zoom + 1))
+      scroller.setAttribute('height', 100)
+      
+      this.drawWaveform()
       this.drawSlider()
-      requestAnimationFrame(this.drawPeaks.bind(this))
+      this.drawSelection()
+      requestAnimationFrame(this.draw.bind(this))
     },
   }
 }

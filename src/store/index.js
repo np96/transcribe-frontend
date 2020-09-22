@@ -118,9 +118,6 @@ class SegmentTree {
 }
 
 
-
-
-
 function segmentList(data, segSize, from = 0) {
   let avg = [] //, mean = [],  let peak = []
   const segments = Math.ceil(data.length / segSize)
@@ -152,9 +149,9 @@ export default new Vuex.Store({
     time: 0,
   },
 
-  getters: {
+  computed: {
     duration: state => { return state.track.duration() },
-    seek: state => { return state.track.seek() }
+    seek: state => { return state.track.seek()  + state.loop[0] ? state.loop[1] : 0}
   },
 
   mutations: {
@@ -205,9 +202,10 @@ export default new Vuex.Store({
     buffer (state, buf) {
       state.buffer = buf
     },
-    loop (state, pos) {
-      state.loop = [true, pos[0], pos[1]]
+    loop (state, loop) {
+      state.loop = loop
     },
+    
   },
   actions: {
 
@@ -216,7 +214,11 @@ export default new Vuex.Store({
       context.state.track.pause()
       context.state.track._sprite.l =  [ pos[0]*1000, (pos[1]-pos[0])*1000, true]
       context.state.track.play('l')
-      context.commit('loop', pos)
+      context.commit('loop', [true, pos[0], pos[1]])
+    },
+    
+    endLoop (context) {
+      context.commit('loop', [false, null, null])
     },
 
     play (context) {
