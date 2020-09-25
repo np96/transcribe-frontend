@@ -1,20 +1,13 @@
 import Vue from 'vue'
 import App from './App.vue'
+import Vuex from 'vuex'
 import vuetify from './plugins/vuetify';
-import store from './store'
+import createStoreConfig from './store'
 
 Vue.config.productionTip = false
 
-Vue.directive('scroll', {
-  inserted: function (el, binding) {
-    let f = function (evt) {
-      if (binding.value(evt, el)) {
-        window.removeEventListener('scroll', f)
-      }
-    }
-    window.addEventListener('scroll', f)
-  }
-})
+const storeConfig = createStoreConfig()
+const store = new Vuex.Store(storeConfig)
 
 new Vue({
   vuetify,
