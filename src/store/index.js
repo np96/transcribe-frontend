@@ -5,10 +5,10 @@ import {SegmentTree, segmentList} from './segment_tree'
 
 Vue.use(Vuex)
 
-const PlaybackStates = Object.freeze({
-  PLAY: Symbol("play"),
-  PAUSE: Symbol("pause"),
-  STOP: Symbol("stop")
+export const PlaybackStates = Object.freeze({
+  PLAY: "play",
+  PAUSE: "pause",
+  STOP: "stop"
 })
 
 const mutations = {
@@ -60,14 +60,17 @@ const mutations = {
   loop (state, loop) {
     state.loop = loop
   },
+  howl (state, src) {
+    state.tracks.push(src)
+  }
 }
 
 const actions = {
   startLoop (context, pos) {
     console.log(pos[0] + ' ' + pos[1])
-    context.state.track.stop()
+    context.getters.track.stop()
     context.dispatch('stop')
-    context.state.track._sprite.l =  [ pos[0]*1000, (pos[1]-pos[0])*1000, true]
+    context.getters.track._sprite.l =  [ pos[0]*1000, (pos[1]-pos[0])*1000, true]
     context.commit('loop', [true, pos[0], pos[1]])
     context.dispatch('play')
   },
@@ -77,36 +80,61 @@ const actions = {
   },
 
   play (context) {
-    console.log(Howler.codecs("mp3"))
     if (context.state.loop[0]) {
-      context.state.track.play('l')
+      context.getters.track.play('l')
     } else {
-      context.state.track.play()
+      context.getters.track.pause()
+      context.getters.track.play()
     }
     // console.log(this.state.track.seek())
     context.commit('play')
   },
 
   pause (context) {
-    this.state.track.pause()
+    context.getters.track.pause()
     context.commit('pause')
   },
 
   stop (context) {
-    this.state.track.stop()
+    context.getters.track.stop()
     context.commit('stop')
+  },
+
+  async upload (context, data) {
+    const audioBuffer = await data.file.arrayBuffer()
+        .then(buffer => Howler.ctx.decodeAudioData(buffer))
+    const channels = [audioBuffer.getChannelData(0), audioBuffer.getChannelData(1)]
+    const segmentTree = new SegmentTree(
+                            segmentList(channels[0], 100)['avg']
+                          )
+    context.dispatch('stop')
+    context.dispatch('newTrack', data.howl)
+    context.dispatch('endLoop')
+    context.commit('buffer', audioBuffer)
+    context.commit('segments', segmentTree)
+  },
+
+  newTrack (context, h) {
+    context.commit('howl', h)
   },
 
   async getWaveform (context) {
     try {
       let audioBuffer
-      if (this.state.audioBuffer == null) {
-      audioBuffer = await fetch('example.mp3')
-                        .then(response => response.blob())
-                        .then(blob => blob.arrayBuffer())
-                        .then(buffer => Howler.ctx.decodeAudioData(buffer))
-      context.commit('buffer', audioBuffer)
-      } else audioBuffer = this.state.audioBuffer
+      if (context.state.buffer == null) {
+        const h = new Howl({
+          'src': ['example.mp3'],
+          'html5': true,
+          'autoplay': false,
+        })
+
+        context.dispatch('newTrack', h)
+        audioBuffer = await fetch('example.mp3')
+                          .then(response => response.blob())
+                          .then(blob => blob.arrayBuffer())
+                          .then(buffer => Howler.ctx.decodeAudioData(buffer))
+        context.commit('buffer', audioBuffer)
+      } else audioBuffer = context.state.buffer
       const channels = [audioBuffer.getChannelData(0), audioBuffer.getChannelData(1)]
       const segmentTree = new SegmentTree(
                             segmentList(channels[0], 100)['avg']
@@ -122,11 +150,7 @@ const actions = {
 export default function createStoreConfig() {
   const state = {
     playback: PlaybackStates.STOP,
-    track: new Howl({
-      'src': ['example.mp3'],
-      'html5': true,
-      'autoplay': false,
-    }),
+    tracks: [],
     buffer: null,
     segments: null,
     loop: [false, 0, 0],
@@ -134,13 +158,20 @@ export default function createStoreConfig() {
   }
 
   const computed = {
-    duration: state => { return state.track.duration() },
-    seek: state => { return state.track.seek()  + state.loop[0] ? state.loop[1] : 0}
+    
   }
-  
+
+  const getters = {
+    duration: state => { return state.tracks[state.tracks.length - 1].duration() },
+    seek: state => { return state.tracks[state.tracks.length - 1].seek() },
+    
+    track: state => { return state.tracks[state.tracks.length - 1] }
+  }
+
   return {
     state,
     computed,
+    getters,
     actions,
     mutations,
   }

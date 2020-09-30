@@ -47,35 +47,6 @@ class SegmentTree {
     this.buildTree()
   }
 
-  buildSegmentTree(v, l, r) {
-    let data = this.data
-    let tree = this.tree
-    if (l == r) {
-      tree[v] = [data[l], data[l]]
-    }
-    else {
-      this.buildSegmentTree(2 * v, l , (l + r) >> 1)
-      this.buildSegmentTree(2 * v + 1, ((l + r) >> 1) + 1, r)
-      tree[v] = listPeak(tree[2 * v].concat(tree[2 * v + 1]))
-    }
-  }
-
-  segmentPeak(l, r, v = 1, tl = 0, tr = this.data.length - 1) {
-    if (l > r) {
-      return []
-    }
-    if (l == tl && r == tr) {
-      return this.tree[v]
-    } else {
-      const tm = (tl + tr) >> 1
-      const lpeak = this.segmentPeak(l, Math.min(r, tm),
-                                     2 * v, tl, tm)
-      const rpeak = this.segmentPeak(Math.max(l, tm + 1), r,
-                                     2 * v + 1, tm + 1, tr)
-      return listPeak(lpeak.concat(rpeak))
-    }
-  }
-
   buildTree() {
     let data = this.data
     let tree = this.tree
@@ -118,4 +89,4 @@ class SegmentTree {
   }
 }
 
-module.exports = {listPeak, segmentAvg, segmentList, SegmentTree}
+export {listPeak, segmentAvg, segmentList, SegmentTree}

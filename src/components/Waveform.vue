@@ -15,6 +15,9 @@
 </template>
 
 <script>
+
+import PlaybackStates from '@/store'
+
 export default {
   render: h => h('div'),
   props: {
@@ -47,28 +50,32 @@ export default {
 
   async created () {
     await this.$store.dispatch('getWaveform')
-    await this.updatePeaks()
-    this.ready = true
   },
 
-  mounted () {
+  async mounted () {
     const canv = document.getElementById("c")
     document.getElementById("scrolltar").addEventListener("scroll", this.onScroll)
     canv.setAttribute('width', this.width)
     canv.setAttribute('height', this.height)
-    
     this.canv = canv
     this.ctx = canv.getContext("2d")
-    this.draw()
   },
 
   computed: {
-    seek: {
-      cache: false,
-      get: function () {
-        // const loop = this.$store.state.loop
-        return this.$store.state.track.seek() // + (loop[0] ? loop[1] : 0)
-    }
+    segments() {
+      return this.$store.state.segments
+    },
+  },
+
+  watch: {
+    segments () {
+      if (!this.ready) {
+        this.draw()
+      }
+      this.ready = true
+      this.updatePeaks()
+      this.updateLoop()
+      this.zoom = 0
     }
   },
 
@@ -77,16 +84,19 @@ export default {
     onScroll(e) {
       this.offsetLeft = e.target.scrollLeft
       this.updatePeaks()
+      this.updateLoop()
     },
 
     onZoomIn() {
       this.zoom = Math.min(this.zoom + 0.1, 10)
       this.updatePeaks()
+      this.updateLoop()
     },
 
     onZoomOut() {
       this.zoom = Math.max(this.zoom - 0.1, 0)
       this.updatePeaks()
+      this.updateLoop()
     },
 
     startSelect() {
@@ -99,9 +109,8 @@ export default {
     endSelect() {
       if (this.loopEnd == null) { return }
       this.dragging = false
-      const duration = this.$store.state.track.duration()
-      const start = this.getTime(this.loopStart, duration)
-      const end = this.getTime(this.loopEnd, duration)
+      const start = this.getTime(this.loopStart)
+      const end = this.getTime(this.loopEnd)
       this.$store.dispatch('startLoop', [start, end])
     },
 
@@ -117,9 +126,9 @@ export default {
       }
     },
 
-    updatePeaks () {
+    updatePeaks() {
       const offset = this.offsetLeft
-      const tree = this.$store.state.segments
+      const tree = this.segments
       const segmentSize = tree.segmentSize(this.zoom, this.divWidth)
       const h = this.height >> 1
       for (let i = offset; i < offset + this.divWidth; i++) {
@@ -127,19 +136,28 @@ export default {
         this.peaksCanv[i - offset] = [h - h * p[0], h - h * p[1]]
       }
     },
+    
+    updateLoop() {
+      const loop = this.$store.state.loop
+      if (!loop[0])
+        return;
+      this.loopStart = this.getX(loop[1])
+      this.loopEnd = this.getX(loop[2])
+    },
 
-    getTime(x, duration = this.$store.state.track.duration()) {
+    getTime(x, duration = this.$store.getters.track.duration()) {
       // t = (x + ol) * dur / w / (z + 1)
       return (x + this.offsetLeft) * duration / this.width / (this.zoom + 1)
     },
 
-    getX(time, duration = this.$store.state.track.duration()) {
+    getX(time, duration = this.$store.getters.track.duration()) {
       // x = w * t * (z + 1) / dur - ol
       return Math.floor(this.width * time * (this.zoom + 1) / duration - this.offsetLeft)
     },
 
     drawSlider() {
-      const time = this.$store.state.track.seek()
+      if (this.$store.state.playback == PlaybackStates['STOP']) return;
+      const time = this.$store.getters.track.seek()
       const x = this.getX(time)
       if (x >= 0) {
         this.ctx.beginPath()
