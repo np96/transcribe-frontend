@@ -70,7 +70,7 @@ const actions = {
     console.log(pos[0] + ' ' + pos[1])
     context.getters.track.stop()
     context.dispatch('stop')
-    context.getters.track._sprite.l =  [ pos[0]*1000, (pos[1]-pos[0])*1000, true]
+    context.getters.track._sprite.l = [pos[0]*1000, (pos[1]-pos[0])*1000, true]
     context.commit('loop', [true, pos[0], pos[1]])
     context.dispatch('play')
   },
@@ -164,7 +164,6 @@ export default function createStoreConfig() {
   const getters = {
     duration: state => { return state.tracks[state.tracks.length - 1].duration() },
     seek: state => { return state.tracks[state.tracks.length - 1].seek() },
-    
     track: state => { return state.tracks[state.tracks.length - 1] }
   }
 

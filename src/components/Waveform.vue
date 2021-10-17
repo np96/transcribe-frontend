@@ -1,7 +1,7 @@
 <template>
   <div style="width:100%;">
       <canvas @mousedown="startSelect" @mouseup="endSelect" @mousemove="selectMove"
-        id = "c" ref="can"/>
+        id = "waveCanvas" ref="can"/>
     <v-btn icon large fab color="indigo" @click="onZoomIn">
       <v-icon>mdi-magnify-plus</v-icon>
     </v-btn>
@@ -15,8 +15,6 @@
 </template>
 
 <script>
-
-import PlaybackStates from '@/store'
 
 export default {
   render: h => h('div'),
@@ -32,8 +30,9 @@ export default {
     divWidth: {
       type: Number,
       default: 1440,
-    }
+    },
   },
+
   data () {
     return {
       offsetLeft: 0,
@@ -53,7 +52,7 @@ export default {
   },
 
   async mounted () {
-    const canv = document.getElementById("c")
+    const canv = document.getElementById("waveCanvas")
     document.getElementById("scrolltar").addEventListener("scroll", this.onScroll)
     canv.setAttribute('width', this.width)
     canv.setAttribute('height', this.height)
@@ -156,7 +155,6 @@ export default {
     },
 
     drawSlider() {
-      if (this.$store.state.playback == PlaybackStates['STOP']) return;
       const time = this.$store.getters.track.seek()
       const x = this.getX(time)
       if (x >= 0) {

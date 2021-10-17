@@ -31,14 +31,16 @@ export default {
     play() {
       this.$store.dispatch('play')
     },
+
     pause() {
       this.$store.dispatch('pause')
     },
+
     stop() {
       this.$store.dispatch('stop')
     },
+
     upload() {
-      
       const file = this.file
       const reader = new FileReader()
       const store = this.$store
@@ -53,7 +55,6 @@ export default {
       })
       reader.readAsDataURL(file)
     }
-      
   }
 }
 </script>
